@@ -18,16 +18,17 @@ where
     region: &'a str,
     access_key: &'a str,
     secret_key: &'a str,
+    session_token: Option<&'a str>,
     headers: T,
 
     /* 
     service is the <aws-service-code> that can be found in the service-quotas api.
     
-    For example, use the value `ServiceCode` for this `service` property.
+    For example, use the value ServiceCode for this service property.
     Thus, for "Amazon Simple Storage Service (Amazon S3)", you would use value "s3"
 
-    ```
-    > aws service-quotas list-services
+    
+> aws service-quotas list-services
     {
         "Services": [
             ...
@@ -41,7 +42,7 @@ where
                 "ServiceName": "Amazon Simple Storage Service (Amazon S3)"
             },
             ...
-    ```
+
     This is not absolute, so you might need to poke around at the service you're interesed in.
     See:
     [AWS General Reference -> Service endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/aws-service-information.html) - to look up "service" names and codes
@@ -65,9 +66,10 @@ impl<'a> AwsSign<'a, HashMap<String, String>> {
         secret_key: &'a str,
         service: &'a str,
         body: &'a B,
+        session_token: Option<&'a str>,
     ) -> Self {
         let url: Url = url.parse().unwrap();
-        let headers: HashMap<String, String> = headers
+        let mut headers: HashMap<String, String> = headers
             .iter()
             .filter_map(|(key, value)| {
                 if let Ok(value_inner) = value.to_str() {
@@ -77,6 +79,11 @@ impl<'a> AwsSign<'a, HashMap<String, String>> {
                 }
             })
             .collect();
+
+        if let Some(token) = self.session_token {
+            headers.insert("x-amz-security-token".into(), token.into()));
+        }
+        
         Self {
             method,
             url,
@@ -242,7 +249,8 @@ mod tests {
             "a", 
             "b", 
             "s3", 
-            ""
+            "",
+            None
         );
         let s = aws_sign.canonical_request();
         assert_eq!(s, "GET\n/Prod/graphql\n\n\n\n\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -263,6 +271,7 @@ mod tests {
             "b",
             "s3",
             "".as_bytes(),
+            None
         );
         let s = aws_sign.canonical_request();
         assert_eq!(s, "GET\n/Prod/graphql\n\n\n\n\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -284,6 +293,28 @@ mod tests {
             "b",
             "s3",
             &body,
+            None
+        );
+        let s = aws_sign.canonical_request();
+        assert_eq!(s, "GET\n/Prod/graphql\n\n\n\n\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    #[test]
+    fn sample_canonical_request_with_session_token() {
+        let datetime = chrono::Utc::now();
+        let url: &str = "https://hi.s3.us-east-1.amazonaws.com/Prod/graphql";
+        let map: HeaderMap = HeaderMap::new();
+        let aws_sign = AwsSign::new(
+            "GET", 
+            url, 
+            &datetime, 
+            &map, 
+            "us-east-1", 
+            "a", 
+            "b", 
+            "s3", 
+            "",
+            Some("s")
         );
         let s = aws_sign.canonical_request();
         assert_eq!(s, "GET\n/Prod/graphql\n\n\n\n\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
