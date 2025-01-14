@@ -21,14 +21,14 @@ where
     session_token: Option<&'a str>,
     headers: T,
 
-    /* 
+     /* 
     service is the <aws-service-code> that can be found in the service-quotas api.
     
-    For example, use the value ServiceCode for this service property.
+    For example, use the value `ServiceCode` for this `service` property.
     Thus, for "Amazon Simple Storage Service (Amazon S3)", you would use value "s3"
 
-    
-> aws service-quotas list-services
+    ```
+    > aws service-quotas list-services
     {
         "Services": [
             ...
@@ -42,7 +42,7 @@ where
                 "ServiceName": "Amazon Simple Storage Service (Amazon S3)"
             },
             ...
-
+    ```
     This is not absolute, so you might need to poke around at the service you're interesed in.
     See:
     [AWS General Reference -> Service endpoints and quotas](https://docs.aws.amazon.com/general/latest/gr/aws-service-information.html) - to look up "service" names and codes
